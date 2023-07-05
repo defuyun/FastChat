@@ -18,6 +18,7 @@ from fastapi import Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, JSONResponse
 from fastapi.security.http import HTTPAuthorizationCredentials, HTTPBearer
+from fastapi_socketio import SocketManager
 import httpx
 from pydantic import BaseSettings
 import uvicorn
@@ -49,6 +50,7 @@ class AppSettings(BaseSettings):
 
 app_settings = AppSettings()
 app = fastapi.FastAPI()
+socket_manager = SocketManager(app=app)
 headers = {}
 
 def create_error_response(code: int, message: str) -> JSONResponse:
@@ -208,6 +210,35 @@ async def generate_completion(payload: Dict[str, Any]):
 
 ### GENERAL API - NOT OPENAI COMPATIBLE ###
 
+@app.sio.on('message')
+async def stream_chat_completion(sid, data):
+    model = app_settings.model 
+    session_id = sid
+
+    if not session_id in app_settings.history:
+        app_settings.history[session_id] = []
+
+    app_settings.history[session_id].append({"role": "user", "content": data})
+
+    gen_params = await get_gen_params(
+        model,
+        app_settings.history[session_id],
+    )
+
+    error_check_ret = await check_length(
+        model, gen_params["prompt"], gen_params["max_new_tokens"]
+    )
+
+    if error_check_ret is not None:
+        return error_check_ret
+
+    response = await generate_completion(gen_params)
+
+    if response["error_code"] != 0:
+        return create_error_response(response["error_code"], response["text"])
+
+    app_settings.history[session_id].append({"role": "assistant", "content": response["text"]})
+    await app.sio.emit('message', response["text"])
 
 @app.post("/api/chat")
 async def create_chat_completion(request: SimpleChatCompletionRequest):
