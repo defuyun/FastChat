@@ -382,6 +382,9 @@ if __name__ == "__main__":
     parser.add_argument(
         "--controller-address", type=str, default="http://localhost:21001"
     )
+    parser.add_argument('--load_8bit', action='store_true')
+    parser.set_defaults(load_8bit=False)
+
     add_model_args(parser)
     parser.add_argument(
         "--model-names",

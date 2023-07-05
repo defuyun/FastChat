@@ -883,6 +883,22 @@ class FalconAdapter(BaseModelAdapter):
         tokenizer.pad_token_id = 9
         return model, tokenizer
 
+    def load_compress_model(self, model_path, device, torch_dtype, revision="main"):
+        # Strongly suggest using bf16, which is recommended by the author of Falcon
+        tokenizer = AutoTokenizer.from_pretrained(model_path, revision=revision)
+        model = AutoModelForCausalLM.from_pretrained(
+            model_path,
+            torch_dtype=torch_dtype,
+            low_cpu_mem_usage=True,
+            trust_remote_code=True,
+            load_in_8bit=True,
+            device_map="auto"
+        )
+        # In Falcon tokenizer config and special config there is not any pad token
+        # Setting `pad_token_id` to 9, which corresponds to special token '>>SUFFIX<<'
+        tokenizer.pad_token_id = 9
+        return model, tokenizer
+
     def get_default_conv_template(self, model_path: str) -> Conversation:
         return get_conv_template("falcon")
 
