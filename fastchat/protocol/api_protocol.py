@@ -61,6 +61,14 @@ class APIChatCompletionRequest(BaseModel):
     repetition_penalty: Optional[float] = 1.0
 
 
+class SimpleChatCompletionRequest(BaseModel):
+    message: str
+    session_id: str
+    top_p: Optional[float] = 1.0
+    temperature: Optional[float] = 0.7
+    max_new_tokens: Optional[int] = None
+
+
 class ChatMessage(BaseModel):
     role: str
     content: str
@@ -152,6 +160,8 @@ class CompletionResponse(BaseModel):
     choices: List[CompletionResponseChoice]
     usage: UsageInfo
 
+class SimpleCompletionResponse(BaseModel):
+    message: str
 
 class CompletionResponseStreamChoice(BaseModel):
     index: int

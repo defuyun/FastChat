@@ -1,11 +1,17 @@
-import openai
-openai.api_key = "EMPTY" # Not support yet
-openai.api_base = "http://localhost:8000/v1"
+import json
+import requests
 
-model = "falcon-40b-instruct"
-prompt = ""
+data = {
+    "message": "Be concise: Can you tell me something about gmail?",
+    "session_id": "12345", # need to be unique for each session
+    "temperature": 0.7, # default value
+    "max_new_tokens": 1024
+}
 
-# create a completion
-completion = openai.Completion.create(model=model, prompt=prompt, max_tokens=64)
-# print the completion
-print(prompt + completion.choices[0].text)
+# Send the POST request to the endpoint
+response = requests.post("http://localhost:8000/api/chat", json=data)
+
+# Print the response
+print(response)
+#if response.status_code == '200':
+print(response.json())
