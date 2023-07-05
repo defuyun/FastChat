@@ -9,9 +9,7 @@ data = {
 }
 
 # Send the POST request to the endpoint
-response = requests.post("http://localhost:8000/api/chat", json=data)
+response = requests.post("https://llm-commercial-dev.eng.nianticlabs.com/model/falcon40b/api/chat", json=data)
 
 # Print the response
-print(response)
-#if response.status_code == '200':
-print(response.json())
+print(response.text)
