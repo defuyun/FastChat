@@ -1,0 +1,119 @@
+body {
+    background-color: #f8f9fa;
+    font-family: sans-serif;
+}
+
+#chatbot {
+    position: absolute;
+    top: 10%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 800px;
+    height: 800px;
+    background-color: #fff;
+    border: 1px solid #ccc;
+    border-radius: 10px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+}
+
+#chatbot-header {
+    background-color: #0077c2;
+    color: #fff;
+    font-weight: bold;
+    font-size: 20px;
+    text-align: center;
+    border-top-left-radius: 10px;
+    border-top-right-radius: 10px;
+    padding: 10px;
+}
+
+#chatbot-messages {
+    height: 680px;
+    overflow-y: scroll;
+    padding: 10px;
+}
+
+#chatbot-messages .message {
+    margin-bottom: 10px;
+    padding: 5px;
+    border-radius: 5px;
+    background-color: #eaeaea;
+}
+
+#chatbot-messages .user {
+    color: #333;
+}
+
+#chatbot-messages .bot {
+    color: #130579;
+}
+
+#chatbot-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 1px solid #ccc;
+    padding: 10px;
+}
+
+#user-input {
+    flex: 1;
+    margin-right: 10px;
+    padding: 5px;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+}
+
+#send-button {
+    padding: 5px 10px;
+    background-color: #0077c2;
+    color: #fff;
+    border-radius: 5px;
+    border: none;
+    cursor: pointer;
+}
+
+#upload-button {
+    padding: 5px 10px;
+    background-color: #0077c2;
+    margin-left: 5px;
+    color: #fff;
+    border-radius: 5px;
+    border: none;
+    cursor: pointer;
+}
+
+#chatbot-messages .message {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+#chatbot-messages .message.user .message-text {
+    color: #1e1e1e;
+    white-space: pre-wrap;
+    max-width: 700px;
+}
+
+#chatbot-messages .message.user .user-image {
+    color: #1e1e1e;
+    white-space: pre-wrap;
+    width: 200px;
+    background-color: auto;
+}
+
+#chatbot-messages .message.bot .message-text {
+    color: #1e1e1e;
+    white-space: pre-wrap;
+    max-width: 700px
+}
+
+#chatbot-messages .message.bot-waiting .message-text {
+    color: #1e1e1e;
+}
+
+#chatbot-messages .message .sender-label {
+    font-weight: bold;
+    padding-right: 10px;
+    width: 50px
+}

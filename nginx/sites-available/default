@@ -38,12 +38,24 @@ server {
 	#
 	# include snippets/snakeoil.conf;
 
-	root /var/www/html;
+	server_name _;
+	access_log /var/log/nginx/access.log;
+	error_log /var/log/nginx/error.log info;
+	client_max_body_size 20M;
 
-	# Add index.php to the list if you are using PHP
+	root /home/tianqiliu/FastChat/www;
 	index index.html index.htm index.nginx-debian.html;
 
-	server_name _;
+
+	location /ws/ {
+		proxy_pass http://127.0.0.1:8000/ws/;
+		proxy_http_version 1.1;
+		proxy_set_header Upgrade $http_upgrade;
+		proxy_set_header Connection "Upgrade";
+		proxy_set_header Host $http_host;
+		proxy_set_header X-Forwarded-Host $http_host;
+		proxy_set_header X-Forwarded-Proto $scheme;
+	}
 
 	location /api/ {
 		proxy_pass http://127.0.0.1:8000/api/;

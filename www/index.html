@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Falcon 40B</title>
+    <link rel="stylesheet" href="/model/falcon40b/style.css">
+  </head>
+  <body>
+    <div id="chatbot">
+      <div id="chatbot-header">Falcon 40B</div>
+      <div id="chatbot-messages"></div>
+      <div id="chatbot-footer">
+        <input type="text" id="user-input" placeholder="Type your message here" />
+        <button id="send-button">Send</button>
+        <button id="upload-button">Upload</button>
+      </div>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.6.1/socket.io.js"></script>
+    <script src="/model/falcon40b/socket.js"></script>
+  </body>
+</html>
