@@ -45,6 +45,7 @@ class AppSettings(BaseSettings):
     # The address of the model controller.
     controller_address: str = "http://localhost:21001"
     model: str = None
+    history: Dict[str, List[Dict[str, str]]] = {}
 
 app_settings = AppSettings()
 app = fastapi.FastAPI()
@@ -212,10 +213,17 @@ async def generate_completion(payload: Dict[str, Any]):
 async def create_chat_completion(request: SimpleChatCompletionRequest):
     """Creates a completion for the chat message"""
     model = app_settings.model
+    session_id = request.session_id
+
+    if not session_id in app_settings.history:
+        app_settings.history[session_id] = []
+
+    # assuming a user makes sequential requests for now...
+    app_settings.history[session_id].append({"role": "user", "content": request.message})
 
     gen_params = await get_gen_params(
         model,
-        request.message,
+        app_settings.history[session_id],
         temperature=request.temperature,
         top_p=request.top_p,
         max_tokens=request.max_new_tokens,
@@ -233,6 +241,8 @@ async def create_chat_completion(request: SimpleChatCompletionRequest):
 
     if response["error_code"] != 0:
         return create_error_response(response["error_code"], response["text"])
+
+    app_settings.history[session_id].append({"role": "assistant", "content": response["text"]})
 
     return SimpleCompletionResponse(message=response["text"])
 
