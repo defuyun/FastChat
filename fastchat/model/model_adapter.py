@@ -21,6 +21,7 @@ from transformers import (
     AutoModelForSeq2SeqLM,
     AutoTokenizer,
     LlamaTokenizer,
+    BitsAndBytesConfig,
     LlamaForCausalLM,
     T5Tokenizer,
 )
@@ -886,12 +887,17 @@ class FalconAdapter(BaseModelAdapter):
     def load_compress_model(self, model_path, device, torch_dtype, revision="main"):
         # Strongly suggest using bf16, which is recommended by the author of Falcon
         tokenizer = AutoTokenizer.from_pretrained(model_path, revision=revision)
+        quantization_config = BitsAndBytesConfig(
+            load_in_4bit=True,
+            bnb_4bit_compute_dtype=torch.float16,
+            bnb_4bit_quant_type="nf4",
+            bnb_4bit_use_double_quant=True,
+        )
         model = AutoModelForCausalLM.from_pretrained(
             model_path,
-            torch_dtype=torch_dtype,
             low_cpu_mem_usage=True,
             trust_remote_code=True,
-            load_in_8bit=True,
+            quantization_config=quantization_config,
             device_map="auto"
         )
         # In Falcon tokenizer config and special config there is not any pad token
