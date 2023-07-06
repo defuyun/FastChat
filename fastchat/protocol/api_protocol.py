@@ -65,6 +65,7 @@ class SimpleChatCompletionRequest(BaseModel):
     message: str
     session_id: str
     top_p: Optional[float] = 1.0
+    top_k: Optional[int] = 50
     temperature: Optional[float] = 0.7
     max_new_tokens: Optional[int] = None
 

@@ -45,6 +45,7 @@ conv_template_map = {}
 class AppSettings(BaseSettings):
     # The address of the model controller.
     controller_address: str = "http://localhost:21001"
+    worker_address: str = "http://localhost:21002"
     model: str = None
     history: Dict[str, List[Dict[str, str]]] = {}
 
@@ -61,45 +62,13 @@ def create_error_response(code: int, message: str) -> JSONResponse:
 async def validation_exception_handler(request, exc):
     return create_error_response(ErrorCode.VALIDATION_TYPE_ERROR, str(exc))
 
-async def check_length(model, prompt, max_tokens):
-    async with httpx.AsyncClient() as client:
-        worker_addr = await get_worker_address(model, client)
-
-        response = await client.post(
-            worker_addr + "/model_details",
-            headers=headers,
-            json={},
-            timeout=WORKER_API_TIMEOUT,
-        )
-        context_len = response.json()["context_length"]
-
-        response = await client.post(
-            worker_addr + "/count_token",
-            headers=headers,
-            json={"prompt": prompt},
-            timeout=WORKER_API_TIMEOUT,
-        )
-        token_num = response.json()["count"]
-
-    if token_num + max_tokens > context_len:
-        return create_error_response(
-            ErrorCode.CONTEXT_OVERFLOW,
-            f"This model's maximum context length is {context_len} tokens. "
-            f"However, you requested {max_tokens + token_num} tokens "
-            f"({token_num} in the messages, "
-            f"{max_tokens} in the completion). "
-            f"Please reduce the length of the messages or completion.",
-        )
-    else:
-        return None
-
-
 async def get_gen_params(
     model_name: str,
     messages: Union[str, List[Dict[str, str]]],
     *,
     temperature: float,
     top_p: float,
+    top_k: float,
     max_tokens: Optional[int],
     echo: Optional[bool]
 ) -> Dict[str, Any]:
@@ -142,6 +111,7 @@ async def get_gen_params(
         "model": model_name,
         "prompt": prompt,
         "temperature": temperature,
+        "top_k": top_k,
         "top_p": top_p,
         "max_new_tokens": max_tokens,
         "echo": echo
@@ -153,33 +123,9 @@ async def get_gen_params(
     return gen_params
 
 
-async def get_worker_address(model_name: str, client: httpx.AsyncClient) -> str:
-    """
-    Get worker address based on the requested model
-
-    :param model_name: The worker's model name
-    :param client: The httpx client to use
-    :return: Worker address from the controller
-    :raises: :class:`ValueError`: No available worker for requested model
-    """
-    controller_address = app_settings.controller_address
-
-    ret = await client.post(
-        controller_address + "/get_worker_address", json={"model": model_name}
-    )
-    worker_addr = ret.json()["address"]
-    # No available worker
-    if worker_addr == "":
-        raise ValueError(f"No available worker for {model_name}")
-
-    logger.debug(f"model_name: {model_name}, worker_addr: {worker_addr}")
-    return worker_addr
-
-
 async def get_conv(model_name: str):
-    controller_address = app_settings.controller_address
     async with httpx.AsyncClient() as client:
-        worker_addr = await get_worker_address(model_name, client)
+        worker_addr = app_settings.worker_address
         conv_template = conv_template_map.get((worker_addr, model_name))
         if conv_template is None:
             response = await client.post(
@@ -195,7 +141,7 @@ async def get_conv(model_name: str):
 
 async def generate_completion(payload: Dict[str, Any]):
     async with httpx.AsyncClient() as client:
-        worker_addr = await get_worker_address(payload["model"], client)
+        worker_addr = app_settings.worker_address
 
         response = await client.post(
             worker_addr + "/worker_generate",
@@ -217,31 +163,27 @@ async def create_chat_completion(request: SimpleChatCompletionRequest):
     if not session_id in app_settings.history:
         app_settings.history[session_id] = []
 
-    # assuming a user makes sequential requests for now...
-    app_settings.history[session_id].append({"role": "user", "content": request.message})
+    if session_id != "" and session_id != None:
+        # assuming a user makes sequential requests for now...
+        app_settings.history[session_id].append({"role": "user", "content": request.message})
 
     gen_params = await get_gen_params(
         model,
-        app_settings.history[session_id],
+        app_settings.history[session_id] if session_id != "" and session_id != None else request.message,
         temperature=request.temperature,
         top_p=request.top_p,
+        top_k=request.top_k,
         max_tokens=request.max_new_tokens,
         echo=False
     )
-
-    error_check_ret = await check_length(
-        model, gen_params["prompt"], gen_params["max_new_tokens"]
-    )
-
-    if error_check_ret is not None:
-        return error_check_ret
 
     response = await generate_completion(gen_params)
 
     if response["error_code"] != 0:
         return create_error_response(response["error_code"], response["text"])
 
-    app_settings.history[session_id].append({"role": "assistant", "content": response["text"]})
+    if session_id != "" and session_id != None:
+        app_settings.history[session_id].append({"role": "assistant", "content": response["text"]})
 
     return SimpleCompletionResponse(message=response["text"])
 

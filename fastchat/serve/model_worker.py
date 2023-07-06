@@ -52,16 +52,6 @@ from fastchat.utils import build_logger, pretty_print_semaphore, get_context_len
 worker_id = str(uuid.uuid4())[:6]
 logger = build_logger("model_worker", f"model_worker_{worker_id}.log")
 
-global_counter = 0
-model_semaphore = None
-
-
-def heart_beat_worker(controller):
-    while True:
-        time.sleep(WORKER_HEART_BEAT_INTERVAL)
-        controller.send_heart_beat()
-
-
 class ModelWorker:
     def __init__(
         self,
@@ -114,68 +104,6 @@ class ModelWorker:
             self.generate_stream_func = generate_stream_codet5p
         else:
             self.generate_stream_func = generate_stream
-
-        if not no_register:
-            self.register_to_controller()
-            self.heart_beat_thread = threading.Thread(
-                target=heart_beat_worker, args=(self,)
-            )
-            self.heart_beat_thread.start()
-
-    def register_to_controller(self):
-        logger.info("Register to controller")
-
-        url = self.controller_addr + "/register_worker"
-        data = {
-            "worker_name": self.worker_addr,
-            "check_heart_beat": True,
-            "worker_status": self.get_status(),
-        }
-        r = requests.post(url, json=data)
-        assert r.status_code == 200
-
-    def send_heart_beat(self):
-        logger.info(
-            f"Send heart beat. Models: {self.model_names}. "
-            f"Semaphore: {pretty_print_semaphore(model_semaphore)}. "
-            f"global_counter: {global_counter}. "
-            f"worker_id: {worker_id}. "
-        )
-
-        url = self.controller_addr + "/receive_heart_beat"
-
-        while True:
-            try:
-                ret = requests.post(
-                    url,
-                    json={
-                        "worker_name": self.worker_addr,
-                        "queue_length": self.get_queue_length(),
-                    },
-                    timeout=5,
-                )
-                exist = ret.json()["exist"]
-                break
-            except requests.exceptions.RequestException as e:
-                logger.error(f"heart beat error: {e}")
-            time.sleep(5)
-
-        if not exist:
-            self.register_to_controller()
-
-    def get_queue_length(self):
-        if (
-            model_semaphore is None
-            or model_semaphore._value is None
-            or model_semaphore._waiters is None
-        ):
-            return 0
-        else:
-            return (
-                args.limit_model_concurrency
-                - model_semaphore._value
-                + len(model_semaphore._waiters)
-            )
 
     def get_status(self):
         return {
@@ -308,49 +236,11 @@ class ModelWorker:
 app = FastAPI()
 
 
-def release_model_semaphore():
-    model_semaphore.release()
-
-
-def acquire_model_semaphore():
-    global model_semaphore, global_counter
-    global_counter += 1
-    if model_semaphore is None:
-        model_semaphore = asyncio.Semaphore(args.limit_model_concurrency)
-    return model_semaphore.acquire()
-
-
-def create_background_tasks():
-    background_tasks = BackgroundTasks()
-    background_tasks.add_task(release_model_semaphore)
-    return background_tasks
-
-
-@app.post("/worker_generate_stream")
-async def api_generate_stream(request: Request):
-    params = await request.json()
-    await acquire_model_semaphore()
-    generator = worker.generate_stream_gate(params)
-    background_tasks = create_background_tasks()
-    return StreamingResponse(generator, background=background_tasks)
-
-
 @app.post("/worker_generate")
 async def api_generate(request: Request):
     params = await request.json()
-    await acquire_model_semaphore()
     output = worker.generate_gate(params)
-    release_model_semaphore()
     return JSONResponse(output)
-
-
-@app.post("/worker_get_embeddings")
-async def api_get_embeddings(request: Request):
-    params = await request.json()
-    await acquire_model_semaphore()
-    embedding = worker.get_embeddings(params)
-    background_tasks = create_background_tasks()
-    return JSONResponse(content=embedding, background=background_tasks)
 
 
 @app.post("/worker_get_status")

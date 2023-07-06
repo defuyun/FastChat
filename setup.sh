@@ -8,8 +8,8 @@ bash Miniconda3-py38_23.3.1-0-Linux-x86_64.sh
 pip install huggingface transformers einops accelerate scipy bitsandbytes
 pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
 conda install cudatoolkit
-python -m fastchat.serve.controller 2> controller.log&
-python -m fastchat.serve.model_worker --model-path tiiuae/falcon-40b-instruct 2> worker.log&
+python -m fastchat.serve.controller &> controller.log&
+python -m fastchat.serve.model_worker --model-path tiiuae/falcon-40b-instruct &> worker.log&
 # to run 8bit (requires 40+gb of GPU mem)
 # python -m fastchat.serve.model_worker --model-path tiiuae/falcon-40b-instruct --load_8bit &> worker.log&
 python -m fastchat.serve.simple_server --host localhost --port 8000 &> server.log&
